@@ -20,6 +20,14 @@
     "publishing.api.tokenEnv": {
       "label": "Publish API Token Env",
       "placeholder": "ARTICLE_IMPORT_SECRET"
+    },
+    "publishing.translation.api.baseUrl": {
+      "label": "Translation API Base URL",
+      "placeholder": "http://localhost:5789"
+    },
+    "publishing.translation.api.tokenEnv": {
+      "label": "Translation API Token Env",
+      "placeholder": "ARTICLE_TRANSLATE_SECRET"
     }
   },
   "configSchema": {
@@ -115,6 +123,25 @@
               "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
             },
             "required": ["baseUrl", "tokenEnv"]
+          },
+          "translation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "model": { "type": "string" },
+              "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+              "api": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "baseUrl": { "type": "string" },
+                  "path": { "type": "string" },
+                  "tokenEnv": { "type": "string" },
+                  "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+                }
+              }
+            }
           }
         },
         "required": ["api"]

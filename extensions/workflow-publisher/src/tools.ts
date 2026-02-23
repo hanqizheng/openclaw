@@ -190,9 +190,13 @@ function buildSiteArticleImportTool(service: WorkflowService): AnyAgentTool {
           ? params.candidateId.trim()
           : "manual";
 
+      const bilingualPayload = await service.buildBilingualPayload(normalized, {
+        strict: true,
+        stage: "tool",
+      });
       const result = await service.importArticle({
         candidateId,
-        payload: normalized,
+        payload: bilingualPayload,
         mode: parseMode(params.mode),
         actor: typeof params.actor === "string" && params.actor.trim() ? params.actor : "tool",
       });

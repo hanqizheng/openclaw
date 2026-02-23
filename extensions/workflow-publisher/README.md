@@ -32,6 +32,14 @@ Set the import token in env (default key name from config):
 export ARTICLE_IMPORT_SECRET='...'
 ```
 
+Set the translation token as well (or let translation reuse import token):
+
+```bash
+export ARTICLE_TRANSLATE_SECRET='...'
+```
+
+When translation is enabled, publish confirmation is fail-closed: if title/slug bilingual generation fails, `/pub confirm` is blocked and returns a translation error instead of silently publishing fallback content.
+
 Example:
 
 ```json5
@@ -75,6 +83,16 @@ Example:
               importPath: "/api/integrations/articles/import",
               tokenEnv: "ARTICLE_IMPORT_SECRET",
               timeoutSeconds: 45,
+            },
+            translation: {
+              enabled: true,
+              model: "gpt-4.1-mini",
+              api: {
+                baseUrl: "http://localhost:5789",
+                path: "/api/integrations/articles/translate",
+                tokenEnv: "ARTICLE_TRANSLATE_SECRET",
+                timeoutSeconds: 30,
+              },
             },
           },
         },

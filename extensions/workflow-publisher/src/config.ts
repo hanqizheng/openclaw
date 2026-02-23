@@ -27,6 +27,12 @@ export type WorkflowConfig = {
   publishApiImportPath: string;
   publishApiTokenEnv: string;
   publishApiTimeoutMs: number;
+  translationEnabled: boolean;
+  translationApiBaseUrl: string;
+  translationApiPath: string;
+  translationApiTokenEnv: string;
+  translationModel: string;
+  translationTimeoutMs: number;
 };
 
 const DEFAULT_SOURCE_PROFILE = "default";
@@ -79,6 +85,8 @@ export function resolveWorkflowConfig(params: {
   const topics = asObject(cfg.topics);
   const publishing = asObject(cfg.publishing);
   const api = asObject(publishing.api);
+  const translation = asObject(publishing.translation);
+  const translationApi = asObject(translation.api);
 
   const sqlitePath =
     asString(storage.sqlitePath) ?? path.join(params.stateDir, "workflow-publisher.sqlite");
@@ -123,6 +131,9 @@ export function resolveWorkflowConfig(params: {
   }
 
   const publishApiBaseUrl = asString(api.baseUrl) ?? "http://127.0.0.1:5789";
+  const translationApiBaseUrl = asString(translationApi.baseUrl) ?? publishApiBaseUrl;
+  const translationTimeoutSeconds =
+    asPositiveInt(translationApi.timeoutSeconds) ?? asPositiveInt(translation.timeoutSeconds) ?? 30;
 
   return {
     sqlitePath,
@@ -144,6 +155,12 @@ export function resolveWorkflowConfig(params: {
     publishApiImportPath: asString(api.importPath) ?? "/api/integrations/articles/import",
     publishApiTokenEnv: asString(api.tokenEnv) ?? "ARTICLE_IMPORT_SECRET",
     publishApiTimeoutMs: (asPositiveInt(api.timeoutSeconds) ?? 45) * 1000,
+    translationEnabled: typeof translation.enabled === "boolean" ? translation.enabled : true,
+    translationApiBaseUrl,
+    translationApiPath: asString(translationApi.path) ?? "/api/integrations/articles/translate",
+    translationApiTokenEnv: asString(translationApi.tokenEnv) ?? "ARTICLE_TRANSLATE_SECRET",
+    translationModel: asString(translation.model) ?? "gpt-4.1-mini",
+    translationTimeoutMs: translationTimeoutSeconds * 1000,
   };
 }
 
