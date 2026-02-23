@@ -19,7 +19,19 @@ export function registerWorkflowPublisher(api: OpenClawPluginApi): void {
   api.registerService({
     id: "workflow-publisher-store",
     start: async () => {
-      api.logger.info("workflow-publisher ready");
+      const translationEndpoint = (() => {
+        try {
+          return new URL(
+            service.config.translationApiPath,
+            service.config.translationApiBaseUrl,
+          ).toString();
+        } catch {
+          return `${service.config.translationApiBaseUrl}${service.config.translationApiPath}`;
+        }
+      })();
+      api.logger.info(
+        `workflow-publisher ready (translation=${service.config.translationEnabled ? "enabled" : "disabled"} model=${service.config.translationModel} endpoint=${translationEndpoint})`,
+      );
     },
     stop: async () => {
       service.close();

@@ -3,7 +3,9 @@ import {
   ARTICLE_BLOCK_TYPES,
   type ArticleBlockType,
   type WorkflowArticleBlock,
+  type WorkflowArticleBlockTranslations,
   type WorkflowArticlePayload,
+  type WorkflowArticleTranslations,
 } from "./types.js";
 
 const BLOCK_TYPES = new Set<ArticleBlockType>(ARTICLE_BLOCK_TYPES);
@@ -123,11 +125,49 @@ export function normalizePayload(params: {
       ? normalizedBlocks
       : defaultBlocks({ title, summaryMd: params.summaryMd, sourceUrl: params.sourceUrl });
 
+  const translationsRaw = asObject(params.raw.translations);
+  const translations: WorkflowArticleTranslations = {};
+  for (const [lang, value] of Object.entries(translationsRaw)) {
+    const entry = asObject(value);
+    const title = asString(entry.title);
+    const translatedExcerpt = asString(entry.excerpt);
+    if (!title && !translatedExcerpt) {
+      continue;
+    }
+    translations[lang] = {
+      ...(title ? { title } : {}),
+      ...(translatedExcerpt ? { excerpt: translatedExcerpt } : {}),
+    };
+  }
+
   const blockTranslationsRaw = asObject(params.raw.blockTranslations);
-  const blockTranslations: Record<string, string> = {};
+  const legacyBlockTranslations: Record<string, string> = {};
+  const structuredBlockTranslations: WorkflowArticleBlockTranslations = {};
   for (const [key, value] of Object.entries(blockTranslationsRaw)) {
     if (typeof value === "string") {
-      blockTranslations[key] = value;
+      legacyBlockTranslations[key] = value;
+      continue;
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      continue;
+    }
+    const byLanguage: Record<string, { content?: string; metadata?: Record<string, unknown> }> = {};
+    for (const [lang, translated] of Object.entries(asObject(value))) {
+      const translatedObject = asObject(translated);
+      const translatedContent = asString(translatedObject.content);
+      const translatedMetadataObject = asObject(translatedObject.metadata);
+      const translatedMetadata =
+        Object.keys(translatedMetadataObject).length > 0 ? translatedMetadataObject : undefined;
+      if (!translatedContent && !translatedMetadata) {
+        continue;
+      }
+      byLanguage[lang] = {
+        ...(translatedContent ? { content: translatedContent } : {}),
+        ...(translatedMetadata ? { metadata: translatedMetadata } : {}),
+      };
+    }
+    if (Object.keys(byLanguage).length > 0) {
+      structuredBlockTranslations[key] = byLanguage;
     }
   }
 
@@ -142,7 +182,13 @@ export function normalizePayload(params: {
     dataSource,
     coverImage: coverImage.length ? [coverImage[0] as string] : undefined,
     blocks,
-    blockTranslations: Object.keys(blockTranslations).length ? blockTranslations : undefined,
+    translations: Object.keys(translations).length ? translations : undefined,
+    blockTranslations:
+      Object.keys(structuredBlockTranslations).length > 0
+        ? structuredBlockTranslations
+        : Object.keys(legacyBlockTranslations).length > 0
+          ? legacyBlockTranslations
+          : undefined,
   };
 }
 

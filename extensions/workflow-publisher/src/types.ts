@@ -21,6 +21,25 @@ export type WorkflowArticleBlock = {
   order: number;
 };
 
+export type WorkflowArticleTranslations = Record<
+  string,
+  {
+    title?: string;
+    excerpt?: string;
+  }
+>;
+
+export type WorkflowArticleBlockTranslations = Record<
+  string,
+  Record<
+    string,
+    {
+      content?: string;
+      metadata?: Record<string, unknown>;
+    }
+  >
+>;
+
 export type WorkflowArticlePayload = {
   title: string;
   slug: string;
@@ -30,7 +49,8 @@ export type WorkflowArticlePayload = {
   dataSource: string;
   coverImage?: string[];
   blocks: WorkflowArticleBlock[];
-  blockTranslations?: Record<string, string>;
+  translations?: WorkflowArticleTranslations;
+  blockTranslations?: WorkflowArticleBlockTranslations | Record<string, string>;
 };
 
 export type WorkflowCandidateStatus = "candidate" | "published" | "discarded";

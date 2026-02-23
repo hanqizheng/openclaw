@@ -6,6 +6,9 @@ import { isApprover } from "./config.js";
 type WorkflowCommandContext = {
   senderId?: string;
   from?: string;
+  to?: string;
+  accountId?: string;
+  messageThreadId?: number;
   channel: string;
   isAuthorizedSender: boolean;
   args?: string;
@@ -45,15 +48,123 @@ function withTelegramButtons(
   };
 }
 
-function buildPrepareButtons(
-  candidates: WorkflowCandidate[],
+function resolveTelegramTarget(ctx: WorkflowCommandContext): string | undefined {
+  const to = ctx.to?.trim();
+  if (to) {
+    return to;
+  }
+  const senderId = ctx.senderId?.trim();
+  if (senderId && /^\d+$/.test(senderId)) {
+    return senderId;
+  }
+  return undefined;
+}
+
+function formatCandidateCard(candidate: WorkflowCandidate, index: number): string {
+  return [
+    `候选 #${index + 1}`,
+    `ID: ${candidate.id}`,
+    `标题: ${candidate.title}`,
+    `topic=${candidate.topic} domain=${candidate.domain}`,
+    candidate.url,
+  ].join("\n");
+}
+
+function buildConfirmRows(
+  candidateId: string,
+  nonce: string,
 ): Array<Array<{ text: string; callback_data: string }>> {
-  return candidates.slice(0, 10).map((candidate, index) => [
-    {
-      text: `准备发布 #${index + 1}`,
-      callback_data: `/pub prepare ${candidate.id}`,
-    },
-  ]);
+  return [
+    [
+      {
+        text: "确认存草稿",
+        callback_data: `/pub confirm ${candidateId} ${nonce} draft`,
+      },
+    ],
+    [
+      {
+        text: "确认并发布",
+        callback_data: `/pub confirm ${candidateId} ${nonce} publish`,
+      },
+    ],
+    [
+      {
+        text: "取消",
+        callback_data: `/pub cancel ${candidateId}`,
+      },
+    ],
+  ];
+}
+
+function buildPreparePreview(candidate: WorkflowCandidate, expiresAt: number): string {
+  const exp = new Date(expiresAt).toLocaleString("zh-CN", { hour12: false });
+  return [
+    `候选: ${candidate.id}`,
+    `标题: ${candidate.payload.title}`,
+    `slug: ${candidate.payload.slug}`,
+    `categoryId: ${candidate.payload.categoryId}`,
+    `blocks: ${candidate.payload.blocks.length}`,
+    `到期: ${exp}`,
+    "",
+    "确认后将调用网站导入 API。",
+  ].join("\n");
+}
+
+function buildPrepareReply(params: {
+  ctx: WorkflowCommandContext;
+  candidate: WorkflowCandidate;
+  nonce: string;
+  expiresAt: number;
+  notice?: string;
+}): ReplyPayload {
+  const preview = buildPreparePreview(params.candidate, params.expiresAt);
+  const text = params.notice ? `${params.notice}\n\n${preview}` : preview;
+  const rows = buildConfirmRows(params.candidate.id, params.nonce);
+  if (params.ctx.channel === "telegram") {
+    return withTelegramButtons(text, rows);
+  }
+  return {
+    text:
+      `${text}\n\n` +
+      `非 Telegram 渠道请手动执行:\n` +
+      `/pub confirm ${params.candidate.id} ${params.nonce} draft`,
+  };
+}
+
+async function sendTelegramCandidateCards(
+  api: OpenClawPluginApi,
+  ctx: WorkflowCommandContext,
+  candidates: WorkflowCandidate[],
+): Promise<boolean> {
+  const target = resolveTelegramTarget(ctx);
+  if (!target) {
+    return false;
+  }
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    if (!candidate) {
+      continue;
+    }
+    await api.runtime.channel.telegram.sendMessageTelegram(
+      target,
+      formatCandidateCard(candidate, index),
+      {
+        accountId: ctx.accountId,
+        messageThreadId: ctx.messageThreadId,
+        buttons: [
+          [
+            {
+              text: "准备发布",
+              callback_data: `/pub prepare ${candidate.id}`,
+            },
+          ],
+        ],
+      },
+    );
+  }
+
+  return true;
 }
 
 function usageScan(): string {
@@ -113,7 +224,15 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
       const text = lines.join("\n");
 
       if (ctx.channel === "telegram") {
-        return withTelegramButtons(text, buildPrepareButtons(result.candidates));
+        const sent = await sendTelegramCandidateCards(api, ctx, result.candidates);
+        if (sent) {
+          return {
+            text:
+              `扫描完成: topic=${result.topic}, profile=${result.profile}\n` +
+              `新增 ${result.added} 条，去重跳过 ${result.skippedByDedupe} 条。\n` +
+              `已发送 ${result.candidates.length} 条候选卡片，每条链接都有独立“准备发布”按钮。`,
+          };
+        }
       }
       return { text };
     },
@@ -149,7 +268,12 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
         ];
         const text = lines.join("\n");
         if (ctx.channel === "telegram") {
-          return withTelegramButtons(text, buildPrepareButtons(candidates));
+          const sent = await sendTelegramCandidateCards(api, ctx, candidates);
+          if (sent) {
+            return {
+              text: `已发送 ${candidates.length} 条候选卡片，每条链接都有独立“准备发布”按钮。`,
+            };
+          }
         }
         return { text };
       }
@@ -168,50 +292,12 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
         if (!prepared.ok || !prepared.candidate || !prepared.nonce || !prepared.expiresAt) {
           return { text: `准备失败: ${prepared.reason ?? "unknown"}` };
         }
-
-        const candidate = prepared.candidate;
-        const exp = new Date(prepared.expiresAt).toLocaleString("zh-CN", { hour12: false });
-        const preview = [
-          `候选: ${candidate.id}`,
-          `标题: ${candidate.payload.title}`,
-          `slug: ${candidate.payload.slug}`,
-          `categoryId: ${candidate.payload.categoryId}`,
-          `blocks: ${candidate.payload.blocks.length}`,
-          `到期: ${exp}`,
-          "",
-          "确认后将调用网站导入 API。",
-        ].join("\n");
-
-        const rows = [
-          [
-            {
-              text: "确认存草稿",
-              callback_data: `/pub confirm ${candidate.id} ${prepared.nonce} draft`,
-            },
-          ],
-          [
-            {
-              text: "确认并发布",
-              callback_data: `/pub confirm ${candidate.id} ${prepared.nonce} publish`,
-            },
-          ],
-          [
-            {
-              text: "取消",
-              callback_data: `/pub cancel ${candidate.id}`,
-            },
-          ],
-        ];
-
-        if (ctx.channel === "telegram") {
-          return withTelegramButtons(preview, rows);
-        }
-        return {
-          text:
-            `${preview}\n\n` +
-            `非 Telegram 渠道请手动执行:\n` +
-            `/pub confirm ${candidate.id} ${prepared.nonce} draft`,
-        };
+        return buildPrepareReply({
+          ctx,
+          candidate: prepared.candidate,
+          nonce: prepared.nonce,
+          expiresAt: prepared.expiresAt,
+        });
       }
 
       if (action === "confirm") {
@@ -228,7 +314,33 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
           actor,
         });
         if (!confirmed.ok || !confirmed.publishResult) {
-          return { text: `发布失败: ${confirmed.reason ?? "unknown"}` };
+          if (confirmed.reason === "token_used" || confirmed.reason === "token_expired") {
+            const prepared = service.preparePublish({ candidateId, actor });
+            if (prepared.ok && prepared.candidate && prepared.nonce && prepared.expiresAt) {
+              return buildPrepareReply({
+                ctx,
+                candidate: prepared.candidate,
+                nonce: prepared.nonce,
+                expiresAt: prepared.expiresAt,
+                notice:
+                  confirmed.reason === "token_used"
+                    ? "上一个确认按钮已使用，已为你生成新的确认按钮。"
+                    : "上一个确认按钮已过期，已为你生成新的确认按钮。",
+              });
+            }
+          }
+          const details: string[] = [];
+          if (confirmed.translationFailure?.code) {
+            details.push(`code: ${confirmed.translationFailure.code}`);
+          }
+          if (confirmed.reasonDetail) {
+            details.push(`detail: ${confirmed.reasonDetail}`);
+          }
+          if (confirmed.translationFailure?.endpoint) {
+            details.push(`endpoint: ${confirmed.translationFailure.endpoint}`);
+          }
+          const detailText = details.length > 0 ? `\n${details.join("\n")}` : "";
+          return { text: `发布失败: ${confirmed.reason ?? "unknown"}${detailText}` };
         }
         const result = confirmed.publishResult;
         const cachedMark = confirmed.cached ? " (幂等命中)" : "";
