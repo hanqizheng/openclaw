@@ -14,6 +14,15 @@ export type WorkflowConfig = {
   maxSearchQueries: number;
   searchCountPerQuery: number;
   fetchMaxChars: number;
+  discoveryEnabled: boolean;
+  discoveryApiBaseUrl: string;
+  discoveryApiPath: string;
+  discoveryApiTokenEnv: string;
+  discoveryApiTimeoutMs: number;
+  discoveryMaxResultsPerQuery: number;
+  discoveryMinContentChars: number;
+  discoveryAllowedPathPatterns: string[];
+  discoveryBlockedPathPatterns: string[];
   dedupeWindowDays: number;
   pendingTtlMinutes: number;
   approvers: string[];
@@ -36,6 +45,14 @@ export type WorkflowConfig = {
 };
 
 const DEFAULT_SOURCE_PROFILE = "default";
+const DEFAULT_DISCOVERY_BLOCKED_PATH_PATTERNS = [
+  "/tag/",
+  "/tags/",
+  "/category/",
+  "/categories/",
+  "/search",
+  "/archive",
+];
 
 function asObject(value: unknown): PluginConfigObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -55,6 +72,10 @@ function asPositiveInt(value: unknown): number | undefined {
   return undefined;
 }
 
+function asBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -72,6 +93,10 @@ function normalizeDomain(input: string): string {
     .toLowerCase();
 }
 
+function normalizePathPattern(input: string): string {
+  return input.trim().toLowerCase();
+}
+
 export function resolveWorkflowConfig(params: {
   pluginConfig: unknown;
   stateDir: string;
@@ -87,6 +112,8 @@ export function resolveWorkflowConfig(params: {
   const api = asObject(publishing.api);
   const translation = asObject(publishing.translation);
   const translationApi = asObject(translation.api);
+  const discovery = asObject(publishing.discovery);
+  const discoveryApi = asObject(discovery.api);
 
   const sqlitePath =
     asString(storage.sqlitePath) ?? path.join(params.stateDir, "workflow-publisher.sqlite");
@@ -134,6 +161,21 @@ export function resolveWorkflowConfig(params: {
   const translationApiBaseUrl = asString(translationApi.baseUrl) ?? publishApiBaseUrl;
   const translationTimeoutSeconds =
     asPositiveInt(translationApi.timeoutSeconds) ?? asPositiveInt(translation.timeoutSeconds) ?? 30;
+  const discoveryApiBaseUrl =
+    asString(discoveryApi.baseUrl) ??
+    asString(discovery.baseUrl) ??
+    translationApiBaseUrl ??
+    publishApiBaseUrl;
+  const discoveryApiTimeoutSeconds =
+    asPositiveInt(discoveryApi.timeoutSeconds) ?? asPositiveInt(discovery.timeoutSeconds) ?? 20;
+  const discoveryAllowedPathPatterns = asStringArray(discovery.allowedPathPatterns).map(
+    normalizePathPattern,
+  );
+  const discoveryBlockedPathPatterns = (
+    asStringArray(discovery.blockedPathPatterns).length > 0
+      ? asStringArray(discovery.blockedPathPatterns)
+      : DEFAULT_DISCOVERY_BLOCKED_PATH_PATTERNS
+  ).map(normalizePathPattern);
 
   return {
     sqlitePath,
@@ -141,6 +183,15 @@ export function resolveWorkflowConfig(params: {
     maxSearchQueries: asPositiveInt(limits.maxSearchQueries) ?? 12,
     searchCountPerQuery: asPositiveInt(limits.searchCountPerQuery) ?? 5,
     fetchMaxChars: asPositiveInt(limits.fetchMaxChars) ?? 8000,
+    discoveryEnabled: asBoolean(discovery.enabled) ?? true,
+    discoveryApiBaseUrl,
+    discoveryApiPath: asString(discoveryApi.path) ?? "/api/integrations/articles/search",
+    discoveryApiTokenEnv: asString(discoveryApi.tokenEnv) ?? "ARTICLE_TRANSLATE_SECRET",
+    discoveryApiTimeoutMs: discoveryApiTimeoutSeconds * 1000,
+    discoveryMaxResultsPerQuery: asPositiveInt(discovery.maxResultsPerQuery) ?? 8,
+    discoveryMinContentChars: asPositiveInt(discovery.minContentChars) ?? 800,
+    discoveryAllowedPathPatterns,
+    discoveryBlockedPathPatterns,
     dedupeWindowDays: asPositiveInt(dedupe.windowDays) ?? 7,
     pendingTtlMinutes: asPositiveInt(telegram.pendingTtlMinutes) ?? 15,
     approvers: asStringArray(telegram.approvers),

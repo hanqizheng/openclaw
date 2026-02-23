@@ -51,6 +51,11 @@ function createHarness(params?: {
       profile: "default",
       added: collectCandidates.length,
       skippedByDedupe: 0,
+      skippedByFetch: 0,
+      skippedByDiscovery: 0,
+      skippedByQuality: 0,
+      skippedByTranslation: 0,
+      discoveryMode: "api",
       candidates: collectCandidates,
     })),
     listCandidates: vi.fn(() => listCandidates),
@@ -115,14 +120,16 @@ describe("workflow-publisher commands", () => {
     });
 
     expect(sendMessageTelegram).toHaveBeenCalledTimes(2);
-    expect(sendMessageTelegram.mock.calls[0]?.[1]).toContain("https://example.com/a");
-    expect(sendMessageTelegram.mock.calls[1]?.[1]).toContain("https://example.com/b");
-    expect(sendMessageTelegram.mock.calls[0]?.[2]).toMatchObject({
+    const firstScanCall = sendMessageTelegram.mock.calls[0] as unknown[] | undefined;
+    const secondScanCall = sendMessageTelegram.mock.calls[1] as unknown[] | undefined;
+    expect(firstScanCall?.[1]).toContain("https://example.com/a");
+    expect(secondScanCall?.[1]).toContain("https://example.com/b");
+    expect(firstScanCall?.[2]).toMatchObject({
       accountId: "default",
       messageThreadId: 7,
       buttons: [[{ text: "准备发布", callback_data: "/pub prepare c1" }]],
     });
-    expect(sendMessageTelegram.mock.calls[1]?.[2]).toMatchObject({
+    expect(secondScanCall?.[2]).toMatchObject({
       buttons: [[{ text: "准备发布", callback_data: "/pub prepare c2" }]],
     });
     expect(reply.text).toContain("已发送 2 条候选卡片");
@@ -145,10 +152,12 @@ describe("workflow-publisher commands", () => {
     });
 
     expect(sendMessageTelegram).toHaveBeenCalledTimes(2);
-    expect(sendMessageTelegram.mock.calls[0]?.[2]).toMatchObject({
+    const firstListCall = sendMessageTelegram.mock.calls[0] as unknown[] | undefined;
+    const secondListCall = sendMessageTelegram.mock.calls[1] as unknown[] | undefined;
+    expect(firstListCall?.[2]).toMatchObject({
       buttons: [[{ text: "准备发布", callback_data: "/pub prepare c1" }]],
     });
-    expect(sendMessageTelegram.mock.calls[1]?.[2]).toMatchObject({
+    expect(secondListCall?.[2]).toMatchObject({
       buttons: [[{ text: "准备发布", callback_data: "/pub prepare c2" }]],
     });
     expect(reply.text).toContain("独立“准备发布”按钮");

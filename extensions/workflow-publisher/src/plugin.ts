@@ -30,7 +30,7 @@ export function registerWorkflowPublisher(api: OpenClawPluginApi): void {
         }
       })();
       api.logger.info(
-        `workflow-publisher ready (translation=${service.config.translationEnabled ? "enabled" : "disabled"} model=${service.config.translationModel} endpoint=${translationEndpoint})`,
+        `workflow-publisher ready (translation=${service.config.translationEnabled ? "enabled" : "disabled"} model=${service.config.translationModel} endpoint=${translationEndpoint} discovery=${service.config.discoveryEnabled ? "enabled" : "disabled"})`,
       );
     },
     stop: async () => {

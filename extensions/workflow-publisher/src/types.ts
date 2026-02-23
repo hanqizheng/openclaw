@@ -47,7 +47,8 @@ export type WorkflowArticlePayload = {
   isPublished: boolean;
   categoryId: number;
   dataSource: string;
-  coverImage?: string[];
+  legacyContent?: string | null;
+  coverImage?: string;
   blocks: WorkflowArticleBlock[];
   translations?: WorkflowArticleTranslations;
   blockTranslations?: WorkflowArticleBlockTranslations | Record<string, string>;

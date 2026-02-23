@@ -28,6 +28,14 @@
     "publishing.translation.api.tokenEnv": {
       "label": "Translation API Token Env",
       "placeholder": "ARTICLE_TRANSLATE_SECRET"
+    },
+    "publishing.discovery.api.baseUrl": {
+      "label": "Discovery API Base URL",
+      "placeholder": "http://localhost:5789"
+    },
+    "publishing.discovery.api.tokenEnv": {
+      "label": "Discovery API Token Env",
+      "placeholder": "ARTICLE_TRANSLATE_SECRET"
     }
   },
   "configSchema": {
@@ -131,6 +139,33 @@
               "enabled": { "type": "boolean" },
               "model": { "type": "string" },
               "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+              "api": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "baseUrl": { "type": "string" },
+                  "path": { "type": "string" },
+                  "tokenEnv": { "type": "string" },
+                  "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+                }
+              }
+            }
+          },
+          "discovery": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "maxResultsPerQuery": { "type": "integer", "minimum": 1, "maximum": 20 },
+              "minContentChars": { "type": "integer", "minimum": 200, "maximum": 200000 },
+              "allowedPathPatterns": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "blockedPathPatterns": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
               "api": {
                 "type": "object",
                 "additionalProperties": false,

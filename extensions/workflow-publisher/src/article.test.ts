@@ -35,4 +35,35 @@ describe("workflow-publisher article helpers", () => {
     const slug = slugify("你好");
     expect(slug.startsWith("article-")).toBe(true);
   });
+
+  it("normalizes coverImage from string or array and defaults legacyContent to null", () => {
+    const fromString = normalizePayload({
+      raw: {
+        coverImage: "cover-a.jpg",
+      },
+      fallbackTitle: "Hello World",
+      fallbackCategoryId: 9,
+      defaultIsPublished: false,
+      defaultDataSource: "NEW",
+      sourceUrl: "https://example.com/a",
+      summaryMd: "summary",
+    });
+    expect(fromString.coverImage).toBe("cover-a.jpg");
+    expect(fromString.legacyContent).toBeNull();
+
+    const fromArray = normalizePayload({
+      raw: {
+        coverImage: ["cover-b.jpg", "cover-c.jpg"],
+        legacyContent: "legacy markdown",
+      },
+      fallbackTitle: "Hello World",
+      fallbackCategoryId: 9,
+      defaultIsPublished: false,
+      defaultDataSource: "NEW",
+      sourceUrl: "https://example.com/a",
+      summaryMd: "summary",
+    });
+    expect(fromArray.coverImage).toBe("cover-b.jpg");
+    expect(fromArray.legacyContent).toBe("legacy markdown");
+  });
 });

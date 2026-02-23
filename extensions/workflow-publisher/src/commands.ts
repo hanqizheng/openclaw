@@ -187,10 +187,30 @@ function parseMode(raw: string | undefined): PublishMode {
   return raw === "publish" ? "publish" : "draft";
 }
 
+function formatCollectDiagnostics(result: Awaited<ReturnType<WorkflowService["collect"]>>): string {
+  const lines = [
+    `新增 ${result.added} 条，去重跳过 ${result.skippedByDedupe} 条。`,
+    `发现模式: ${result.discoveryMode}`,
+  ];
+  const detailPairs: Array<[string, number]> = [
+    ["discovery失败", result.skippedByDiscovery],
+    ["抓取失败", result.skippedByFetch],
+    ["内容拒绝", result.skippedByQuality],
+    ["翻译失败", result.skippedByTranslation],
+  ];
+  const details = detailPairs
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => `${label}: ${count}`);
+  if (details.length > 0) {
+    lines.push(`跳过明细: ${details.join(" / ")}`);
+  }
+  return lines.join("\n");
+}
+
 export function registerWorkflowCommands(api: OpenClawPluginApi, service: WorkflowService): void {
   api.registerCommand({
     name: "scan",
-    description: "采集固定站点资讯并生成候选。",
+    description: "搜索并采集候选文章，生成可发布候选。",
     acceptsArgs: true,
     handler: async (ctx) => {
       const tokens = parseTokens(ctx.args);
@@ -209,13 +229,15 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
 
       if (result.candidates.length === 0) {
         return {
-          text: `扫描完成: topic=${result.topic}, profile=${result.profile}\n新增 0 条，去重跳过 ${result.skippedByDedupe} 条。`,
+          text:
+            `扫描完成: topic=${result.topic}, profile=${result.profile}\n` +
+            formatCollectDiagnostics(result),
         };
       }
 
       const lines = [
         `扫描完成: topic=${result.topic}, profile=${result.profile}`,
-        `新增 ${result.added} 条，去重跳过 ${result.skippedByDedupe} 条。`,
+        formatCollectDiagnostics(result),
         "",
         ...result.candidates.map((candidate, index) => formatCandidate(candidate, index)),
         "",
@@ -229,7 +251,7 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
           return {
             text:
               `扫描完成: topic=${result.topic}, profile=${result.profile}\n` +
-              `新增 ${result.added} 条，去重跳过 ${result.skippedByDedupe} 条。\n` +
+              `${formatCollectDiagnostics(result)}\n` +
               `已发送 ${result.candidates.length} 条候选卡片，每条链接都有独立“准备发布”按钮。`,
           };
         }

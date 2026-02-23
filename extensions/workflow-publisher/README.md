@@ -3,6 +3,7 @@
 Private workflow plugin for:
 
 - fixed-source web collection (`/scan <topic>`)
+- search-first article discovery (`/scan <topic>`) with content quality gates
 - Telegram review + two-step publish buttons
 - article import API publishing with idempotency and audit history
 
@@ -36,6 +37,33 @@ Set the translation token as well (or let translation reuse import token):
 
 ```bash
 export ARTICLE_TRANSLATE_SECRET='...'
+```
+
+When discovery is enabled, set a discovery token too (or reuse translation/import token):
+
+```bash
+export ARTICLE_DISCOVERY_SECRET='...'
+```
+
+You can reuse one single key (for example DeepSeek API key) for all three env vars:
+
+```bash
+export ARTICLE_IMPORT_SECRET="$DEEPSEEK_API_KEY"
+export ARTICLE_TRANSLATE_SECRET="$DEEPSEEK_API_KEY"
+export ARTICLE_DISCOVERY_SECRET="$DEEPSEEK_API_KEY"
+```
+
+`workflow-publisher` now also falls back in both directions:
+
+- translation uses import token when translation token is missing
+- publish import uses translation/discovery token when import token is missing
+- when `publishing.translation.api` route is unavailable (for example 404), translation auto-falls back to direct OpenAI-compatible chat completions (default `https://api.deepseek.com/v1/chat/completions`)
+
+Optional fallback endpoint overrides:
+
+```bash
+export WORKFLOW_PUBLISHER_TRANSLATION_FALLBACK_BASE_URL='https://api.deepseek.com/v1'
+export WORKFLOW_PUBLISHER_TRANSLATION_FALLBACK_PATH='/chat/completions'
 ```
 
 When translation is enabled, publish confirmation is fail-closed: if title/slug bilingual generation fails, `/pub confirm` is blocked and returns a translation error instead of silently publishing fallback content.
@@ -92,6 +120,18 @@ Example:
                 path: "/api/integrations/articles/translate",
                 tokenEnv: "ARTICLE_TRANSLATE_SECRET",
                 timeoutSeconds: 30,
+              },
+            },
+            discovery: {
+              enabled: true,
+              maxResultsPerQuery: 8,
+              minContentChars: 800,
+              blockedPathPatterns: ["/tag/", "/category/", "/search", "/archive"],
+              api: {
+                baseUrl: "http://localhost:5789",
+                path: "/api/integrations/articles/search",
+                tokenEnv: "ARTICLE_DISCOVERY_SECRET",
+                timeoutSeconds: 20,
               },
             },
           },

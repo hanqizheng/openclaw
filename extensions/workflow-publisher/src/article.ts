@@ -171,7 +171,23 @@ export function normalizePayload(params: {
     }
   }
 
-  const coverImage = asStringArray(params.raw.coverImage);
+  const coverImage = (() => {
+    const asSingle = asString(params.raw.coverImage);
+    if (asSingle) {
+      return asSingle;
+    }
+    const asList = asStringArray(params.raw.coverImage);
+    return asList.length > 0 ? (asList[0] as string) : undefined;
+  })();
+  const legacyContent = (() => {
+    if (typeof params.raw.legacyContent === "string") {
+      return params.raw.legacyContent;
+    }
+    if (params.raw.legacyContent === null) {
+      return null;
+    }
+    return null;
+  })();
 
   return {
     title,
@@ -180,7 +196,8 @@ export function normalizePayload(params: {
     isPublished,
     categoryId,
     dataSource,
-    coverImage: coverImage.length ? [coverImage[0] as string] : undefined,
+    legacyContent,
+    coverImage,
     blocks,
     translations: Object.keys(translations).length ? translations : undefined,
     blockTranslations:
