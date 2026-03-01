@@ -1,6 +1,5 @@
 import path from "node:path";
-
-type PluginConfigObject = Record<string, unknown>;
+import { asObject, asString, asPositiveInt, asBoolean, asStringArray } from "./utils.js";
 
 export type WorkflowSourceProfile = {
   name: string;
@@ -53,38 +52,6 @@ const DEFAULT_DISCOVERY_BLOCKED_PATH_PATTERNS = [
   "/search",
   "/archive",
 ];
-
-function asObject(value: unknown): PluginConfigObject {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  return value as PluginConfigObject;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function asPositiveInt(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-    return Math.trunc(value);
-  }
-  return undefined;
-}
-
-function asBoolean(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
-}
-
-function asStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .filter((entry) => typeof entry === "string")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
 
 function normalizeDomain(input: string): string {
   return input

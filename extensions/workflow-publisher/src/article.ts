@@ -7,29 +7,9 @@ import {
   type WorkflowArticlePayload,
   type WorkflowArticleTranslations,
 } from "./types.js";
+import { asObject, asString, asStringArray } from "./utils.js";
 
 const BLOCK_TYPES = new Set<ArticleBlockType>(ARTICLE_BLOCK_TYPES);
-
-function asObject(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  return value as Record<string, unknown>;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function asStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .filter((entry) => typeof entry === "string")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
 
 export function normalizeBlocks(value: unknown): WorkflowArticleBlock[] {
   if (!Array.isArray(value)) {
@@ -72,7 +52,7 @@ export function defaultBlocks(params: {
       type: "LINK",
       content: params.sourceUrl,
       metadata: {
-        text: "阅读原文",
+        text: "\u9605\u8bfb\u539f\u6587",
         target: "_blank",
       },
       order: 1,
@@ -129,13 +109,13 @@ export function normalizePayload(params: {
   const translations: WorkflowArticleTranslations = {};
   for (const [lang, value] of Object.entries(translationsRaw)) {
     const entry = asObject(value);
-    const title = asString(entry.title);
+    const entryTitle = asString(entry.title);
     const translatedExcerpt = asString(entry.excerpt);
-    if (!title && !translatedExcerpt) {
+    if (!entryTitle && !translatedExcerpt) {
       continue;
     }
     translations[lang] = {
-      ...(title ? { title } : {}),
+      ...(entryTitle ? { title: entryTitle } : {}),
       ...(translatedExcerpt ? { excerpt: translatedExcerpt } : {}),
     };
   }

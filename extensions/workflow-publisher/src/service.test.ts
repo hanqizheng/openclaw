@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { WorkflowCandidate } from "./types.js";
 import { WorkflowService } from "./service.js";
+import type { WorkflowCandidate } from "./types.js";
 
 function buildCandidate(id: string): WorkflowCandidate {
   const now = Date.now();

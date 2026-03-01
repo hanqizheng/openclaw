@@ -1,8 +1,8 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
+import { registerWorkflowCommands } from "./commands.js";
 import type { WorkflowService } from "./service.js";
 import type { WorkflowCandidate } from "./types.js";
-import { registerWorkflowCommands } from "./commands.js";
 
 function makeCandidate(id: string, url: string): WorkflowCandidate {
   const now = Date.now();

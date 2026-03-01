@@ -1,7 +1,7 @@
 import type { OpenClawPluginApi, ReplyPayload } from "openclaw/plugin-sdk";
+import { isApprover } from "./config.js";
 import type { WorkflowService } from "./service.js";
 import type { WorkflowCandidate, PublishMode } from "./types.js";
-import { isApprover } from "./config.js";
 
 type WorkflowCommandContext = {
   senderId?: string;
@@ -141,27 +141,29 @@ async function sendTelegramCandidateCards(
     return false;
   }
 
+  // Defensive: Telegram channel API may not be available in all configurations
+  const telegram = api.runtime.channel?.telegram;
+  if (!telegram?.sendMessageTelegram) {
+    return false;
+  }
+
   for (let index = 0; index < candidates.length; index += 1) {
     const candidate = candidates[index];
     if (!candidate) {
       continue;
     }
-    await api.runtime.channel.telegram.sendMessageTelegram(
-      target,
-      formatCandidateCard(candidate, index),
-      {
-        accountId: ctx.accountId,
-        messageThreadId: ctx.messageThreadId,
-        buttons: [
-          [
-            {
-              text: "准备发布",
-              callback_data: `/pub prepare ${candidate.id}`,
-            },
-          ],
+    await telegram.sendMessageTelegram(target, formatCandidateCard(candidate, index), {
+      accountId: ctx.accountId,
+      messageThreadId: ctx.messageThreadId,
+      buttons: [
+        [
+          {
+            text: "准备发布",
+            callback_data: `/pub prepare ${candidate.id}`,
+          },
         ],
-      },
-    );
+      ],
+    });
   }
 
   return true;
@@ -252,7 +254,7 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
             text:
               `扫描完成: topic=${result.topic}, profile=${result.profile}\n` +
               `${formatCollectDiagnostics(result)}\n` +
-              `已发送 ${result.candidates.length} 条候选卡片，每条链接都有独立“准备发布”按钮。`,
+              `已发送 ${result.candidates.length} 条候选卡片，每条链接都有独立\u201c准备发布\u201d按钮。`,
           };
         }
       }
@@ -293,7 +295,7 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
           const sent = await sendTelegramCandidateCards(api, ctx, candidates);
           if (sent) {
             return {
-              text: `已发送 ${candidates.length} 条候选卡片，每条链接都有独立“准备发布”按钮。`,
+              text: `已发送 ${candidates.length} 条候选卡片，每条链接都有独立\u201c准备发布\u201d按钮。`,
             };
           }
         }

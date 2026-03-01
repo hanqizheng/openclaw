@@ -1,16 +1,10 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { AnyAgentTool, OpenClawPluginApi } from "openclaw/plugin-sdk";
-import type { WorkflowService } from "./service.js";
-import type { PublishMode } from "./types.js";
 import { normalizePayload } from "./article.js";
 import { resolveCategoryId } from "./config.js";
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  return value as Record<string, unknown>;
-}
+import type { WorkflowService } from "./service.js";
+import type { PublishMode } from "./types.js";
+import { asObject } from "./utils.js";
 
 function toToolResult(payload: unknown): AgentToolResult<unknown> {
   return {
@@ -168,7 +162,7 @@ function buildSiteArticleImportTool(service: WorkflowService): AnyAgentTool {
       required: ["payload"],
     },
     execute: async (_id: string, params: Record<string, unknown>) => {
-      const rawPayload = asRecord(params.payload);
+      const rawPayload = asObject(params.payload);
       const topic =
         typeof params.topic === "string" && params.topic.trim() ? params.topic : "manual";
       const fallbackCategoryId = resolveCategoryId(topic, service.config);
