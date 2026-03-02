@@ -466,6 +466,12 @@ importers:
 
   extensions/whatsapp: {}
 
+  extensions/workflow-publisher:
+    devDependencies:
+      openclaw:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/zalo:
     dependencies:
       undici:

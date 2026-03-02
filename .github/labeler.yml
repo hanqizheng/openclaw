@@ -256,3 +256,7 @@
   - changed-files:
       - any-glob-to-any-file:
           - "extensions/talk-voice/**"
+"extensions: workflow-publisher":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "extensions/workflow-publisher/**"

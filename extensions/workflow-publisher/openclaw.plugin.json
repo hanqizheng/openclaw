@@ -1,0 +1,186 @@
+{
+  "id": "workflow-publisher",
+  "name": "Workflow Publisher",
+  "description": "Curated web collection with Telegram approval buttons and article import publishing.",
+  "uiHints": {
+    "telegram.approvers": {
+      "label": "Telegram Approvers",
+      "help": "Telegram user IDs allowed to run /pub prepare|confirm|cancel."
+    },
+    "sources.defaultProfile": {
+      "label": "Default Source Profile"
+    },
+    "topics.defaultCategoryId": {
+      "label": "Default Category ID"
+    },
+    "publishing.api.baseUrl": {
+      "label": "Publish API Base URL",
+      "placeholder": "http://localhost:5789"
+    },
+    "publishing.api.tokenEnv": {
+      "label": "Publish API Token Env",
+      "placeholder": "ARTICLE_IMPORT_SECRET"
+    },
+    "publishing.translation.api.baseUrl": {
+      "label": "Translation API Base URL",
+      "placeholder": "http://localhost:5789"
+    },
+    "publishing.translation.api.tokenEnv": {
+      "label": "Translation API Token Env",
+      "placeholder": "ARTICLE_TRANSLATE_SECRET"
+    },
+    "publishing.discovery.api.baseUrl": {
+      "label": "Discovery API Base URL",
+      "placeholder": "http://localhost:5789"
+    },
+    "publishing.discovery.api.tokenEnv": {
+      "label": "Discovery API Token Env",
+      "placeholder": "ARTICLE_TRANSLATE_SECRET"
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "storage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sqlitePath": { "type": "string" }
+        }
+      },
+      "limits": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "maxCandidatesPerRun": { "type": "integer", "minimum": 1, "maximum": 50 },
+          "maxSearchQueries": { "type": "integer", "minimum": 1, "maximum": 30 },
+          "searchCountPerQuery": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "fetchMaxChars": { "type": "integer", "minimum": 500, "maximum": 50000 }
+        }
+      },
+      "dedupe": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "windowDays": { "type": "integer", "minimum": 1, "maximum": 365 }
+        }
+      },
+      "telegram": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "approvers": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "pendingTtlMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 }
+        }
+      },
+      "sources": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defaultProfile": { "type": "string" },
+          "profiles": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "domains": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "minItems": 1
+                },
+                "queries": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              },
+              "required": ["domains"]
+            }
+          }
+        },
+        "required": ["profiles"]
+      },
+      "topics": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defaultCategoryId": { "type": "integer", "minimum": 1 },
+          "categoryMap": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "minimum": 1 }
+          }
+        }
+      },
+      "publishing": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defaultIsPublished": { "type": "boolean" },
+          "defaultDataSource": { "type": "string" },
+          "api": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "baseUrl": { "type": "string" },
+              "importPath": { "type": "string" },
+              "tokenEnv": { "type": "string" },
+              "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+            },
+            "required": ["baseUrl", "tokenEnv"]
+          },
+          "translation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "model": { "type": "string" },
+              "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+              "api": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "baseUrl": { "type": "string" },
+                  "path": { "type": "string" },
+                  "tokenEnv": { "type": "string" },
+                  "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+                }
+              }
+            }
+          },
+          "discovery": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "maxResultsPerQuery": { "type": "integer", "minimum": 1, "maximum": 20 },
+              "minContentChars": { "type": "integer", "minimum": 200, "maximum": 200000 },
+              "allowedPathPatterns": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "blockedPathPatterns": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "api": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "baseUrl": { "type": "string" },
+                  "path": { "type": "string" },
+                  "tokenEnv": { "type": "string" },
+                  "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+                }
+              }
+            }
+          }
+        },
+        "required": ["api"]
+      }
+    }
+  }
+}
