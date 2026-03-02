@@ -363,6 +363,12 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
           if (confirmed.translationFailure?.endpoint) {
             details.push(`endpoint: ${confirmed.translationFailure.endpoint}`);
           }
+          if (confirmed.publishResult && !confirmed.publishResult.ok) {
+            details.push(`status: ${confirmed.publishResult.status}`);
+            if (confirmed.publishResult.responseText) {
+              details.push(`response: ${confirmed.publishResult.responseText.slice(0, 300)}`);
+            }
+          }
           const detailText = details.length > 0 ? `\n${details.join("\n")}` : "";
           return { text: `发布失败: ${confirmed.reason ?? "unknown"}${detailText}` };
         }

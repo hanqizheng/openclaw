@@ -929,7 +929,14 @@ export class WorkflowService {
     });
 
     if (!publishResult.ok) {
-      return { ok: false, reason: "publish_failed", candidate, publishResult };
+      const detail = `HTTP ${publishResult.status}`;
+      return {
+        ok: false,
+        reason: "publish_failed",
+        reasonDetail: detail,
+        candidate,
+        publishResult,
+      };
     }
 
     const now = Date.now();
