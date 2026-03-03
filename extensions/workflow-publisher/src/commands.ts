@@ -214,6 +214,7 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
     name: "scan",
     description: "搜索并采集候选文章，生成可发布候选。",
     acceptsArgs: true,
+    requireAuth: false,
     handler: async (ctx) => {
       const tokens = parseTokens(ctx.args);
       if (tokens.length < 1) {
@@ -222,6 +223,22 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
 
       const topic = tokens[0] as string;
       const profile = tokens[1];
+
+      // Send immediate ack on Telegram so the user knows scanning started
+      if (ctx.channel === "telegram") {
+        const target = resolveTelegramTarget(ctx);
+        const telegram = api.runtime.channel?.telegram;
+        if (target && telegram?.sendMessageTelegram) {
+          await telegram
+            .sendMessageTelegram(
+              target,
+              `正在扫描 topic=${topic}${profile ? ` profile=${profile}` : ""} ...`,
+              { accountId: ctx.accountId, messageThreadId: ctx.messageThreadId },
+            )
+            .catch(() => {});
+        }
+      }
+
       const result = await service.collect({
         topic,
         profile,
@@ -266,6 +283,7 @@ export function registerWorkflowCommands(api: OpenClawPluginApi, service: Workfl
     name: "pub",
     description: "候选发布工作流命令。",
     acceptsArgs: true,
+    requireAuth: false,
     handler: async (ctx) => {
       const tokens = parseTokens(ctx.args);
       const action = tokens[0] ?? "help";

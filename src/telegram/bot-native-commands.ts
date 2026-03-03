@@ -737,6 +737,13 @@ export const registerTelegramNativeCommands = ({
             : `telegram:${chatId}`;
           const to = `telegram:${chatId}`;
 
+          await withTelegramApiErrorLogging({
+            operation: "sendChatAction",
+            runtime,
+            fn: () =>
+              bot.api.sendChatAction(chatId, "typing", buildTelegramThreadParams(threadSpec) ?? {}),
+          }).catch(() => {});
+
           const result = await executePluginCommand({
             command: match.command,
             args: match.args,

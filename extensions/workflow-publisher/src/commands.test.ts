@@ -119,9 +119,12 @@ describe("workflow-publisher commands", () => {
       isAuthorizedSender: true,
     });
 
-    expect(sendMessageTelegram).toHaveBeenCalledTimes(2);
-    const firstScanCall = sendMessageTelegram.mock.calls[0] as unknown[] | undefined;
-    const secondScanCall = sendMessageTelegram.mock.calls[1] as unknown[] | undefined;
+    expect(sendMessageTelegram).toHaveBeenCalledTimes(3);
+    // First call is the ack message
+    const ackCall = sendMessageTelegram.mock.calls[0] as unknown[] | undefined;
+    expect(ackCall?.[1]).toContain("正在扫描");
+    const firstScanCall = sendMessageTelegram.mock.calls[1] as unknown[] | undefined;
+    const secondScanCall = sendMessageTelegram.mock.calls[2] as unknown[] | undefined;
     expect(firstScanCall?.[1]).toContain("https://example.com/a");
     expect(secondScanCall?.[1]).toContain("https://example.com/b");
     expect(firstScanCall?.[2]).toMatchObject({

@@ -30,6 +30,7 @@ export type WorkflowConfig = {
   topicCategoryMap: Record<string, number>;
   defaultCategoryId: number;
   defaultIsPublished: boolean;
+  defaultCoverImage: string | undefined;
   defaultDataSource: string;
   publishApiBaseUrl: string;
   publishApiImportPath: string;
@@ -168,6 +169,7 @@ export function resolveWorkflowConfig(params: {
     defaultCategoryId: asPositiveInt(topics.defaultCategoryId) ?? 1,
     defaultIsPublished:
       typeof publishing.defaultIsPublished === "boolean" ? publishing.defaultIsPublished : false,
+    defaultCoverImage: asString(publishing.defaultCoverImage) || undefined,
     defaultDataSource: asString(publishing.defaultDataSource) ?? "NEW",
     publishApiBaseUrl,
     publishApiImportPath: asString(api.importPath) ?? "/api/integrations/articles/import",
@@ -200,13 +202,15 @@ export function resolveSourceProfile(
 
 export function isApprover(
   senderId: string | undefined,
-  isAuthorizedSender: boolean,
+  _isAuthorizedSender: boolean,
   cfg: WorkflowConfig,
 ): boolean {
-  const normalizedSender = senderId?.trim();
+  // Single source of truth: plugin's own `telegram.approvers` list.
+  // Empty list = everyone can publish; no fallback to Telegram allowFrom.
   if (!cfg.approvers.length) {
-    return isAuthorizedSender;
+    return true;
   }
+  const normalizedSender = senderId?.trim();
   if (!normalizedSender) {
     return false;
   }
