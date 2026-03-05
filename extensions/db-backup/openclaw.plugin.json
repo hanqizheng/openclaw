@@ -27,8 +27,7 @@
           "url": { "type": "string" },
           "secretEnv": { "type": "string" },
           "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 600 }
-        },
-        "required": ["url", "secretEnv"]
+        }
       },
       "schedule": {
         "type": "object",
@@ -53,7 +52,6 @@
           "chatId": { "type": "string" }
         }
       }
-    },
-    "required": ["api"]
+    }
   }
 }
