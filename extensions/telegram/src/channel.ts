@@ -483,6 +483,10 @@ export const telegramPlugin: ChannelPlugin<ResolvedTelegramAccount, TelegramProb
         }
       }
       ctx.log?.info(`[${account.accountId}] starting provider${telegramBotLabel}`);
+      const trackEvent = () => {
+        const now = Date.now();
+        ctx.setStatus({ lastEventAt: now, lastInboundAt: now } as never);
+      };
       return getTelegramRuntime().channel.telegram.monitorTelegramProvider({
         token,
         accountId: account.accountId,
@@ -495,6 +499,7 @@ export const telegramPlugin: ChannelPlugin<ResolvedTelegramAccount, TelegramProb
         webhookPath: account.config.webhookPath,
         webhookHost: account.config.webhookHost,
         webhookPort: account.config.webhookPort,
+        onInboundEvent: trackEvent,
       });
     },
     logoutAccount: async ({ accountId, cfg }) => {

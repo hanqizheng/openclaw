@@ -30,6 +30,8 @@ export type MonitorTelegramOpts = {
   webhookHost?: string;
   proxyFetch?: typeof fetch;
   webhookUrl?: string;
+  /** Called on each inbound update so the health monitor knows the channel is alive. */
+  onInboundEvent?: () => void;
 };
 
 export function createTelegramRunnerOptions(cfg: OpenClawConfig): RunOptions<unknown> {
@@ -224,6 +226,7 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
             lastUpdateId,
             onUpdateId: persistUpdateId,
           },
+          onInboundEvent: opts.onInboundEvent,
         });
       } catch (err) {
         const shouldRetry = await waitBeforeRetryOnRecoverableSetupError(
