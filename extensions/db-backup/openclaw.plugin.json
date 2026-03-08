@@ -1,0 +1,57 @@
+{
+  "id": "db-backup",
+  "name": "DB Backup",
+  "description": "Scheduled database backups via HTTP API with Telegram notifications.",
+  "uiHints": {
+    "api.url": {
+      "label": "Backup API URL",
+      "placeholder": "https://www.aiaig.com/api/integrations/db-backup"
+    },
+    "api.secretEnv": {
+      "label": "Backup API Secret Env Var",
+      "placeholder": "DB_BACKUP_SECRET"
+    },
+    "telegram.chatId": {
+      "label": "Telegram Notification Chat ID",
+      "placeholder": "-100XXXXXXXXXX"
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "api": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": { "type": "string" },
+          "secretEnv": { "type": "string" },
+          "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 600 }
+        }
+      },
+      "schedule": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cronExpr": { "type": "string" },
+          "timezone": { "type": "string" }
+        }
+      },
+      "storage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "retentionDays": { "type": "integer", "minimum": 1, "maximum": 365 },
+          "backupDir": { "type": "string" }
+        }
+      },
+      "telegram": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "chatId": { "type": "string" }
+        }
+      }
+    }
+  }
+}

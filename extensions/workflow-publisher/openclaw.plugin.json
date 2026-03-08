@@ -29,6 +29,10 @@
       "label": "Translation API Token Env",
       "placeholder": "ARTICLE_TRANSLATE_SECRET"
     },
+    "publishing.defaultCoverImage": {
+      "label": "Default Cover Image",
+      "help": "Default cover image path for published articles."
+    },
     "publishing.discovery.api.baseUrl": {
       "label": "Discovery API Base URL",
       "placeholder": "http://localhost:5789"
@@ -120,6 +124,7 @@
         "additionalProperties": false,
         "properties": {
           "defaultIsPublished": { "type": "boolean" },
+          "defaultCoverImage": { "type": "string" },
           "defaultDataSource": { "type": "string" },
           "api": {
             "type": "object",

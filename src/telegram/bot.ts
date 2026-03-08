@@ -57,6 +57,8 @@ export type TelegramBotOptions = {
     lastUpdateId?: number | null;
     onUpdateId?: (updateId: number) => void | Promise<void>;
   };
+  /** Called on each inbound update so the health monitor knows the channel is alive. */
+  onInboundEvent?: () => void;
   testTimings?: {
     mediaGroupFlushMs?: number;
     textFragmentGapMs?: number;
@@ -204,6 +206,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     if (typeof updateId === "number") {
       pendingUpdateIds.add(updateId);
     }
+    opts.onInboundEvent?.();
     try {
       await next();
     } finally {

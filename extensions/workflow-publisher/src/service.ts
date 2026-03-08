@@ -631,6 +631,7 @@ export class WorkflowService {
         categoryId,
         isPublished: this.config.defaultIsPublished,
         dataSource: this.config.defaultDataSource,
+        coverImage: this.config.defaultCoverImage,
       },
       fallbackTitle: autoTitle,
       fallbackCategoryId: categoryId,
