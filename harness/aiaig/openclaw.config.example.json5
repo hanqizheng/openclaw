@@ -1,0 +1,62 @@
+{
+  agents: {
+    list: [
+      {
+        id: "aiaig-editor",
+        // Local runtime workspace. This is not a repo path.
+        workspace: "~/.openclaw/workspace-aiaig-editor",
+      },
+    ],
+  },
+
+  plugins: {
+    load: {
+      // Replace with the absolute path to this repo-local plugin source.
+      paths: ["/absolute/path/to/openclaw/harness/plugins/aiaig-content-ops"],
+    },
+    entries: {
+      "aiaig-content-ops": {
+        enabled: true,
+        config: {
+          baseUrl: "https://www.aiaig.com",
+          importSecretEnv: "ARTICLE_IMPORT_SECRET",
+          importPath: "/api/integrations/articles/import",
+          // Relative to the agent workspace, not to this repo.
+          stateDir: "var/aiaig/state",
+          searchApiKeyEnv: "GEMINI_API_KEY",
+          searchModel: "gemini-2.5-flash-lite",
+          // Keep a safety buffer below the current Google grounding free-tier ceiling.
+          searchDailyLimit: 300,
+          // Repeated scouting runs on the same day should hit cache instead of billing again.
+          searchCacheTtlMinutes: 720,
+          searchTimezone: "Asia/Shanghai",
+          // Uncomment if Google APIs require a local proxy on your host.
+          // searchProxyUrl: "http://127.0.0.1:1087",
+          defaultCategoryId: 2,
+          allowedCategoryIds: [1, 2, 3, 4, 5],
+          requireEnglish: true,
+        },
+      },
+    },
+  },
+
+  tools: {
+    allow: [
+      "aiaig_packet_save",
+      "aiaig_packet_get",
+      "aiaig_search_budget_status",
+      "aiaig_grounded_search",
+      "aiaig_article_build_payload",
+      "aiaig_article_validate",
+      "aiaig_article_publish",
+    ],
+  },
+
+  channels: {
+    telegram: {
+      capabilities: {
+        inlineButtons: "allowlist",
+      },
+    },
+  },
+}

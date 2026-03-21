@@ -1,0 +1,26 @@
+{
+  "id": "aiaig-content-ops",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "baseUrl": { "type": "string" },
+      "importPath": { "type": "string" },
+      "importSecretEnv": { "type": "string" },
+      "stateDir": { "type": "string" },
+      "defaultCategoryId": { "type": "integer" },
+      "allowedCategoryIds": {
+        "type": "array",
+        "items": { "type": "integer" }
+      },
+      "requireEnglish": { "type": "boolean" },
+      "searchApiKeyEnv": { "type": "string" },
+      "searchModel": { "type": "string" },
+      "searchDailyLimit": { "type": "integer" },
+      "searchCacheTtlMinutes": { "type": "integer" },
+      "searchTimezone": { "type": "string" },
+      "searchProxyUrl": { "type": "string" }
+    }
+  }
+}
