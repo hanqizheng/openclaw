@@ -5,14 +5,21 @@ type SourceLinkInput = {
   labelEn?: string;
 };
 
+export type BlockInput = {
+  type: string; // TEXT | HTML | QA
+  contentZh?: string; // Chinese content (markdown for TEXT/HTML, text for QA)
+  contentEn?: string; // English content for translatable types
+};
+
 type BuildArticlePayloadInput = {
   slug: string;
   titleZh: string;
   titleEn: string;
   excerptZh: string;
   excerptEn: string;
-  bodyMarkdownZh: string;
-  bodyMarkdownEn: string;
+  bodyMarkdownZh?: string;
+  bodyMarkdownEn?: string;
+  blocks?: BlockInput[];
   categoryId?: number;
   coverImage?: string;
   seoTitleZh?: string;
@@ -31,8 +38,7 @@ export function buildArticleImportPayload(
   defaults: BuildArticlePayloadDefaults,
 ) {
   const sourceLinks = normalizeSourceLinks(input.sourceLinks);
-  const bodyZh = appendSourcesSection(normalizeMarkdown(input.bodyMarkdownZh), sourceLinks, "zh");
-  const bodyEn = appendSourcesSection(normalizeMarkdown(input.bodyMarkdownEn), sourceLinks, "en");
+  const { blocks, blockTranslations } = resolveBlocks(input, sourceLinks);
   const categoryId =
     typeof input.categoryId === "number" && Number.isInteger(input.categoryId)
       ? input.categoryId
@@ -51,14 +57,7 @@ export function buildArticleImportPayload(
       seoTitle: readOptionalString(input.seoTitleZh) ?? `${input.titleZh.trim()} | AIAIG`,
       seoDescription: readOptionalString(input.seoDescriptionZh) ?? input.excerptZh.trim(),
     }),
-    blocks: [
-      {
-        type: "TEXT",
-        content: bodyZh,
-        metadata: {},
-        order: 0,
-      },
-    ],
+    blocks,
     translations: {
       en: compactRecord({
         title: input.titleEn.trim(),
@@ -69,14 +68,7 @@ export function buildArticleImportPayload(
         }),
       }),
     },
-    blockTranslations: {
-      "0": {
-        en: {
-          content: bodyEn,
-          metadata: {},
-        },
-      },
-    },
+    blockTranslations,
   });
 
   return {
@@ -87,12 +79,144 @@ export function buildArticleImportPayload(
       titleEn: input.titleEn.trim(),
       slug: input.slug.trim(),
       categoryId,
-      blockCount: 1,
+      blockCount: blocks.length,
       sourceCount: sourceLinks.length,
       excerptZh: input.excerptZh.trim(),
       excerptEn: input.excerptEn.trim(),
     },
   };
+}
+
+const TRANSLATABLE_BLOCK_TYPES = new Set(["TEXT", "QUOTE", "HTML", "LINK", "QA"]);
+
+/** Build payload blocks + blockTranslations from explicit blocks array or legacy single-body fields. */
+function resolveBlocks(
+  input: BuildArticlePayloadInput,
+  sourceLinks: SourceLinkInput[],
+): {
+  blocks: Array<{
+    type: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    order: number;
+  }>;
+  blockTranslations: Record<string, { en: { content: string; metadata: Record<string, unknown> } }>;
+} {
+  if (Array.isArray(input.blocks) && input.blocks.length > 0) {
+    return resolveExplicitBlocks(input.blocks, sourceLinks);
+  }
+  // Backward compat: single TEXT block from bodyMarkdownZh/bodyMarkdownEn
+  return resolveLegacySingleBlock(input, sourceLinks);
+}
+
+function resolveExplicitBlocks(
+  inputBlocks: BlockInput[],
+  sourceLinks: SourceLinkInput[],
+): {
+  blocks: Array<{
+    type: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    order: number;
+  }>;
+  blockTranslations: Record<string, { en: { content: string; metadata: Record<string, unknown> } }>;
+} {
+  const blocks: Array<{
+    type: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    order: number;
+  }> = [];
+  const blockTranslations: Record<
+    string,
+    { en: { content: string; metadata: Record<string, unknown> } }
+  > = {};
+
+  // Find the last TEXT block index so we can append source links to it
+  let lastTextIndex = -1;
+  for (let i = inputBlocks.length - 1; i >= 0; i--) {
+    if (inputBlocks[i].type === "TEXT") {
+      lastTextIndex = i;
+      break;
+    }
+  }
+
+  for (let i = 0; i < inputBlocks.length; i++) {
+    const block = inputBlocks[i];
+    const built = buildSingleBlock(block, i);
+
+    // Append source links to the last TEXT block
+    if (i === lastTextIndex && sourceLinks.length > 0) {
+      built.content = appendSourcesSection(built.content, sourceLinks, "zh");
+    }
+
+    blocks.push(built);
+
+    if (TRANSLATABLE_BLOCK_TYPES.has(block.type)) {
+      const translation = buildSingleBlockTranslation(block);
+
+      // Append source links to the last TEXT block's English translation too
+      if (i === lastTextIndex && sourceLinks.length > 0) {
+        translation.content = appendSourcesSection(translation.content, sourceLinks, "en");
+      }
+
+      blockTranslations[String(i)] = { en: translation };
+    }
+  }
+
+  return { blocks, blockTranslations };
+}
+
+function resolveLegacySingleBlock(
+  input: BuildArticlePayloadInput,
+  sourceLinks: SourceLinkInput[],
+): {
+  blocks: Array<{
+    type: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    order: number;
+  }>;
+  blockTranslations: Record<string, { en: { content: string; metadata: Record<string, unknown> } }>;
+} {
+  const bodyZh = appendSourcesSection(
+    normalizeMarkdown(input.bodyMarkdownZh ?? ""),
+    sourceLinks,
+    "zh",
+  );
+  const bodyEn = appendSourcesSection(
+    normalizeMarkdown(input.bodyMarkdownEn ?? ""),
+    sourceLinks,
+    "en",
+  );
+
+  return {
+    blocks: [{ type: "TEXT", content: bodyZh, metadata: {}, order: 0 }],
+    blockTranslations: {
+      "0": { en: { content: bodyEn, metadata: {} } },
+    },
+  };
+}
+
+/** Build a single payload block from a BlockInput. */
+function buildSingleBlock(
+  block: BlockInput,
+  order: number,
+): { type: string; content: string; metadata: Record<string, unknown>; order: number } {
+  return {
+    type: block.type,
+    content: normalizeMarkdown(block.contentZh ?? ""),
+    metadata: {},
+    order,
+  };
+}
+
+/** Build a single block English translation from a BlockInput. */
+function buildSingleBlockTranslation(block: BlockInput): {
+  content: string;
+  metadata: Record<string, unknown>;
+} {
+  return { content: normalizeMarkdown(block.contentEn ?? ""), metadata: {} };
 }
 
 function normalizeMarkdown(value: string): string {

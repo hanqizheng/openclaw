@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Type } from "@sinclair/typebox";
-import { buildArticleImportPayload } from "./article-payload.ts";
+import { buildArticleImportPayload, type BlockInput } from "./article-payload.ts";
 import {
   createGroundedSearchDefaults,
   getGroundedSearchBudgetStatus,
@@ -237,19 +237,48 @@ export default {
           {
             name: "aiaig_article_build_payload",
             description:
-              "Build a valid bilingual AIAIG article-import payload from plain article fields. Use this instead of hand-writing JSON.",
+              "Build a valid bilingual AIAIG article-import payload from plain article fields. Supports multi-block payloads via `blocks` array, or a single TEXT block via `bodyMarkdownZh`/`bodyMarkdownEn`. Use this instead of hand-writing JSON.",
             parameters: Type.Object({
               slug: Type.String({ description: "Stable article slug." }),
               titleZh: Type.String({ description: "Chinese article title." }),
               titleEn: Type.String({ description: "English article title." }),
               excerptZh: Type.String({ description: "Chinese article excerpt/summary." }),
               excerptEn: Type.String({ description: "English article excerpt/summary." }),
-              bodyMarkdownZh: Type.String({
-                description: "Chinese Markdown body for the main TEXT block.",
-              }),
-              bodyMarkdownEn: Type.String({
-                description: "English Markdown body for the translated TEXT block.",
-              }),
+              bodyMarkdownZh: Type.Optional(
+                Type.String({
+                  description:
+                    "Chinese Markdown body for a single TEXT block. Use this OR blocks, not both.",
+                }),
+              ),
+              bodyMarkdownEn: Type.Optional(
+                Type.String({
+                  description:
+                    "English Markdown body for a single TEXT block. Use this OR blocks, not both.",
+                }),
+              ),
+              blocks: Type.Optional(
+                Type.Array(
+                  Type.Object({
+                    type: stringEnumSchema(ARTICLE_BLOCK_TYPES, {
+                      description: "Block type. Prefer TEXT, HTML, or QA.",
+                    }),
+                    contentZh: Type.Optional(
+                      Type.String({
+                        description: "Chinese content: markdown for TEXT/HTML, text for QA.",
+                      }),
+                    ),
+                    contentEn: Type.Optional(
+                      Type.String({
+                        description: "English content for translatable types (TEXT, HTML, QA).",
+                      }),
+                    ),
+                  }),
+                  {
+                    description:
+                      "Ordered list of content blocks. Provide this OR bodyMarkdownZh/bodyMarkdownEn.",
+                  },
+                ),
+              ),
               categoryId: Type.Optional(
                 Type.Number({ description: "AIAIG category id override." }),
               ),
@@ -284,6 +313,25 @@ export default {
               ),
             }),
             async execute(_id, params) {
+              // Pre-flight: require either blocks or bodyMarkdownZh+bodyMarkdownEn
+              const hasBlocks = Array.isArray(params.blocks) && params.blocks.length > 0;
+              const hasBody =
+                typeof params.bodyMarkdownZh === "string" &&
+                params.bodyMarkdownZh.trim().length > 0 &&
+                typeof params.bodyMarkdownEn === "string" &&
+                params.bodyMarkdownEn.trim().length > 0;
+              if (!hasBlocks && !hasBody) {
+                return jsonResult({
+                  ok: false,
+                  error:
+                    "Provide either a `blocks` array or both `bodyMarkdownZh` and `bodyMarkdownEn`.",
+                });
+              }
+
+              const blocks: BlockInput[] | undefined = hasBlocks
+                ? (params.blocks as BlockInput[])
+                : undefined;
+
               const built = buildArticleImportPayload(
                 {
                   slug: params.slug,
@@ -291,8 +339,9 @@ export default {
                   titleEn: params.titleEn,
                   excerptZh: params.excerptZh,
                   excerptEn: params.excerptEn,
-                  bodyMarkdownZh: params.bodyMarkdownZh,
-                  bodyMarkdownEn: params.bodyMarkdownEn,
+                  bodyMarkdownZh: readOptionalString(params.bodyMarkdownZh),
+                  bodyMarkdownEn: readOptionalString(params.bodyMarkdownEn),
+                  blocks,
                   categoryId: readOptionalInteger(params.categoryId),
                   coverImage: readOptionalString(params.coverImage),
                   seoTitleZh: readOptionalString(params.seoTitleZh),
