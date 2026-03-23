@@ -7,8 +7,10 @@ type SourceLinkInput = {
 
 export type BlockInput = {
   type: string; // TEXT | HTML | QA
-  contentZh?: string; // Chinese content (markdown for TEXT/HTML, text for QA)
+  contentZh?: string; // Chinese content (markdown for TEXT/HTML)
   contentEn?: string; // English content for translatable types
+  metadataZh?: Record<string, unknown>; // Chinese metadata (e.g. qaItems for QA blocks)
+  metadataEn?: Record<string, unknown>; // English metadata for translatable types
 };
 
 type BuildArticlePayloadInput = {
@@ -22,6 +24,7 @@ type BuildArticlePayloadInput = {
   blocks?: BlockInput[];
   categoryId?: number;
   coverImage?: string;
+  isPublished?: boolean;
   seoTitleZh?: string;
   seoTitleEn?: string;
   seoDescriptionZh?: string;
@@ -49,7 +52,7 @@ export function buildArticleImportPayload(
     slug: input.slug.trim(),
     excerpt: input.excerptZh.trim(),
     coverImage: readOptionalString(input.coverImage),
-    isPublished: false,
+    isPublished: input.isPublished === true,
     categoryId,
     dataSource: "NEW",
     legacyContent: null,
@@ -198,15 +201,19 @@ function resolveLegacySingleBlock(
   };
 }
 
+// Block types where content should be empty and payload lives in metadata
+const METADATA_ONLY_BLOCK_TYPES = new Set(["QA", "PROPERTY", "ARTICLE_REFERENCE"]);
+
 /** Build a single payload block from a BlockInput. */
 function buildSingleBlock(
   block: BlockInput,
   order: number,
 ): { type: string; content: string; metadata: Record<string, unknown>; order: number } {
+  const isMetadataOnly = METADATA_ONLY_BLOCK_TYPES.has(block.type);
   return {
     type: block.type,
-    content: normalizeMarkdown(block.contentZh ?? ""),
-    metadata: {},
+    content: isMetadataOnly ? "" : normalizeMarkdown(block.contentZh ?? ""),
+    metadata: block.metadataZh ?? {},
     order,
   };
 }
@@ -216,7 +223,11 @@ function buildSingleBlockTranslation(block: BlockInput): {
   content: string;
   metadata: Record<string, unknown>;
 } {
-  return { content: normalizeMarkdown(block.contentEn ?? ""), metadata: {} };
+  const isMetadataOnly = METADATA_ONLY_BLOCK_TYPES.has(block.type);
+  return {
+    content: isMetadataOnly ? "" : normalizeMarkdown(block.contentEn ?? ""),
+    metadata: block.metadataEn ?? {},
+  };
 }
 
 function normalizeMarkdown(value: string): string {

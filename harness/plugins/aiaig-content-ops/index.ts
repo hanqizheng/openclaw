@@ -264,12 +264,26 @@ export default {
                     }),
                     contentZh: Type.Optional(
                       Type.String({
-                        description: "Chinese content: markdown for TEXT/HTML, text for QA.",
+                        description:
+                          "Chinese content: markdown for TEXT/HTML. Leave empty for QA/PROPERTY/ARTICLE_REFERENCE.",
                       }),
                     ),
                     contentEn: Type.Optional(
                       Type.String({
-                        description: "English content for translatable types (TEXT, HTML, QA).",
+                        description:
+                          "English content for translatable types (TEXT, HTML). Leave empty for QA.",
+                      }),
+                    ),
+                    metadataZh: Type.Optional(
+                      Type.String({
+                        description:
+                          'Chinese metadata as JSON string. For QA: {"qaItems":[{"question":"...","answer":"..."}]}',
+                      }),
+                    ),
+                    metadataEn: Type.Optional(
+                      Type.String({
+                        description:
+                          'English metadata as JSON string. For QA: {"qaItems":[{"question":"...","answer":"..."}]}',
                       }),
                     ),
                   }),
@@ -329,7 +343,13 @@ export default {
               }
 
               const blocks: BlockInput[] | undefined = hasBlocks
-                ? (params.blocks as BlockInput[])
+                ? params.blocks!.map((b) => ({
+                    type: b.type,
+                    contentZh: b.contentZh,
+                    contentEn: b.contentEn,
+                    metadataZh: tryParseJsonRecord(b.metadataZh),
+                    metadataEn: tryParseJsonRecord(b.metadataEn),
+                  }))
                 : undefined;
 
               const built = buildArticleImportPayload(
@@ -579,6 +599,17 @@ function tryParseJson(value: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+function tryParseJsonRecord(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return undefined;
+  }
+  const parsed = tryParseJson(value);
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    return parsed as Record<string, unknown>;
+  }
+  return undefined;
 }
 
 function ensureTrailingSlash(value: string): string {
