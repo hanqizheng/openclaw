@@ -92,4 +92,49 @@ describe("runCronIsolatedAgentTurn message tool policy", () => {
     expect(runEmbeddedPiAgentMock).toHaveBeenCalledTimes(1);
     expect(runEmbeddedPiAgentMock.mock.calls[0]?.[0]?.disableMessageTool).toBe(false);
   });
+
+  it("enables the message tool when directSend is true and delivery is active", async () => {
+    mockRunCronFallbackPassthrough();
+    resolveCronDeliveryPlanMock.mockReturnValue({
+      requested: true,
+      mode: "announce",
+      channel: "telegram",
+      to: "123",
+    });
+
+    const params = makeParams();
+    (
+      params.job as { payload: { kind: string; message: string; directSend?: boolean } }
+    ).payload.directSend = true;
+    await runCronIsolatedAgentTurn(params);
+
+    expect(runEmbeddedPiAgentMock).toHaveBeenCalledTimes(1);
+    expect(runEmbeddedPiAgentMock.mock.calls[0]?.[0]?.disableMessageTool).toBe(false);
+  });
+
+  it("enables the message tool when directSend is true and delivery.mode is none", async () => {
+    mockRunCronFallbackPassthrough();
+    resolveCronDeliveryPlanMock.mockReturnValue({
+      requested: false,
+      mode: "none",
+    });
+
+    const params = makeParams();
+    (
+      params.job as { payload: { kind: string; message: string; directSend?: boolean } }
+    ).payload.directSend = true;
+    await runCronIsolatedAgentTurn(params);
+
+    expect(runEmbeddedPiAgentMock).toHaveBeenCalledTimes(1);
+    expect(runEmbeddedPiAgentMock.mock.calls[0]?.[0]?.disableMessageTool).toBe(false);
+  });
+
+  it("disables the message tool when directSend is absent (default behavior)", async () => {
+    await expectMessageToolDisabledForPlan({
+      requested: true,
+      mode: "announce",
+      channel: "telegram",
+      to: "123",
+    });
+  });
 });

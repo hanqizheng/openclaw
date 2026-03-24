@@ -160,6 +160,9 @@ function coercePayload(payload: UnknownRecord) {
   ) {
     delete next.allowUnsafeExternalContent;
   }
+  if ("directSend" in next && typeof next.directSend !== "boolean") {
+    delete next.directSend;
+  }
   return next;
 }
 

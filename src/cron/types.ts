@@ -96,6 +96,12 @@ type CronAgentTurnPayloadFields = {
   externalContentSource?: HookExternalContentSource;
   /** If true, run with lightweight bootstrap context. */
   lightContext?: boolean;
+  /**
+   * When true, the message tool stays enabled during the cron run so the agent
+   * can send structured messages (e.g. inline buttons) directly. Cron delivery
+   * is skipped when the agent already sent to the delivery target.
+   */
+  directSend?: boolean;
   deliver?: boolean;
   channel?: CronMessageChannel;
   to?: string;

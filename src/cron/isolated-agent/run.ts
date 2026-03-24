@@ -99,6 +99,7 @@ function resolveCronToolPolicy(params: {
   deliveryRequested: boolean;
   resolvedDelivery: ResolvedCronDeliveryTarget;
   deliveryContract: IsolatedDeliveryContract;
+  directSend?: boolean;
 }) {
   return {
     // Only enforce an explicit message target when the cron delivery target
@@ -108,7 +109,12 @@ function resolveCronToolPolicy(params: {
     // Cron-owned runs always route user-facing delivery through the runner
     // itself. Shared callers keep the previous behavior so non-cron paths do
     // not silently lose the message tool when no explicit delivery is active.
-    disableMessageTool: params.deliveryContract === "cron-owned" ? true : params.deliveryRequested,
+    // directSend overrides: the agent sends structured messages itself.
+    disableMessageTool: params.directSend
+      ? false
+      : params.deliveryContract === "cron-owned"
+        ? true
+        : params.deliveryRequested,
   };
 }
 
@@ -118,6 +124,8 @@ async function resolveCronDeliveryContext(params: {
   agentId: string;
   deliveryContract: IsolatedDeliveryContract;
 }) {
+  const directSend =
+    params.job.payload.kind === "agentTurn" && params.job.payload.directSend === true;
   const deliveryPlan = resolveCronDeliveryPlan(params.job);
   if (!deliveryPlan.requested) {
     const resolvedDelivery = {
@@ -132,11 +140,13 @@ async function resolveCronDeliveryContext(params: {
     return {
       deliveryPlan,
       deliveryRequested: false,
+      directSend,
       resolvedDelivery,
       toolPolicy: resolveCronToolPolicy({
         deliveryRequested: false,
         resolvedDelivery,
         deliveryContract: params.deliveryContract,
+        directSend,
       }),
     };
   }
@@ -149,11 +159,13 @@ async function resolveCronDeliveryContext(params: {
   return {
     deliveryPlan,
     deliveryRequested: deliveryPlan.requested,
+    directSend,
     resolvedDelivery,
     toolPolicy: resolveCronToolPolicy({
       deliveryRequested: deliveryPlan.requested,
       resolvedDelivery,
       deliveryContract: params.deliveryContract,
+      directSend,
     }),
   };
 }
@@ -161,8 +173,9 @@ async function resolveCronDeliveryContext(params: {
 function appendCronDeliveryInstruction(params: {
   commandBody: string;
   deliveryRequested: boolean;
+  directSend?: boolean;
 }) {
-  if (!params.deliveryRequested) {
+  if (!params.deliveryRequested || params.directSend) {
     return params.commandBody;
   }
   return `${params.commandBody}\n\nReturn your summary as plain text; it will be delivered automatically. If the task explicitly calls for messaging a specific external recipient, note who/where it should go instead of sending it yourself.`.trim();
@@ -329,12 +342,13 @@ export async function runCronIsolatedAgentTurn(params: {
   });
 
   const agentPayload = params.job.payload.kind === "agentTurn" ? params.job.payload : null;
-  const { deliveryRequested, resolvedDelivery, toolPolicy } = await resolveCronDeliveryContext({
-    cfg: cfgWithAgentDefaults,
-    job: params.job,
-    agentId,
-    deliveryContract,
-  });
+  const { deliveryRequested, directSend, resolvedDelivery, toolPolicy } =
+    await resolveCronDeliveryContext({
+      cfg: cfgWithAgentDefaults,
+      job: params.job,
+      agentId,
+      deliveryContract,
+    });
 
   const { formattedTime, timeLine } = resolveCronStyleNow(params.cfg, now);
   const base = `[cron:${params.job.id} ${params.job.name}] ${params.message}`.trim();
@@ -376,7 +390,7 @@ export async function runCronIsolatedAgentTurn(params: {
     // Internal/trusted source - use original format
     commandBody = `${base}\n${timeLine}`.trim();
   }
-  commandBody = appendCronDeliveryInstruction({ commandBody, deliveryRequested });
+  commandBody = appendCronDeliveryInstruction({ commandBody, deliveryRequested, directSend });
 
   const existingSkillsSnapshot = cronSession.sessionEntry.skillsSnapshot;
   const skillsSnapshot = resolveCronSkillsSnapshot({
@@ -724,7 +738,7 @@ export async function runCronIsolatedAgentTurn(params: {
   const ackMaxChars = resolveHeartbeatAckMaxChars(agentCfg);
   const skipHeartbeatDelivery = deliveryRequested && isHeartbeatOnlyResponse(payloads, ackMaxChars);
   const skipMessagingToolDelivery =
-    deliveryContract === "shared" &&
+    (deliveryContract === "shared" || directSend) &&
     deliveryRequested &&
     finalRunResult.didSendViaMessagingTool === true &&
     (finalRunResult.messagingToolSentTargets ?? []).some((target) =>
