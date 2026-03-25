@@ -105,7 +105,10 @@ function resolveCronToolPolicy(params: {
     // Only enforce an explicit message target when the cron delivery target
     // was successfully resolved. When resolution fails the agent should not
     // be blocked by a target it cannot satisfy (#27898).
-    requireExplicitMessageTarget: params.deliveryRequested && params.resolvedDelivery.ok,
+    // directSend: the agent sends directly, so don't require an explicit target.
+    requireExplicitMessageTarget: params.directSend
+      ? false
+      : params.deliveryRequested && params.resolvedDelivery.ok,
     // Cron-owned runs always route user-facing delivery through the runner
     // itself. Shared callers keep the previous behavior so non-cron paths do
     // not silently lose the message tool when no explicit delivery is active.
