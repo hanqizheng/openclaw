@@ -34,6 +34,7 @@ type BuildArticlePayloadInput = {
 
 type BuildArticlePayloadDefaults = {
   defaultCategoryId?: number;
+  defaultCoverImage?: string;
 };
 
 export function buildArticleImportPayload(
@@ -51,7 +52,8 @@ export function buildArticleImportPayload(
     title: input.titleZh.trim(),
     slug: input.slug.trim(),
     excerpt: input.excerptZh.trim(),
-    coverImage: readOptionalString(input.coverImage),
+    coverImage:
+      readOptionalString(input.coverImage) ?? readOptionalString(defaults.defaultCoverImage),
     isPublished: input.isPublished === true,
     categoryId,
     dataSource: "NEW",

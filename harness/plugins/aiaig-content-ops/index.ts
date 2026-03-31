@@ -46,6 +46,7 @@ type PluginConfig = {
   searchCacheTtlMinutes: number;
   searchTimezone: string;
   searchProxyUrl?: string;
+  defaultCoverImage?: string;
 };
 
 const GROUNDED_SEARCH_DEFAULTS = createGroundedSearchDefaults();
@@ -71,6 +72,7 @@ const pluginConfigJsonSchema = {
     searchCacheTtlMinutes: { type: "integer" },
     searchTimezone: { type: "string" },
     searchProxyUrl: { type: "string" },
+    defaultCoverImage: { type: "string" },
   },
 };
 
@@ -98,6 +100,7 @@ const pluginConfigSchema = {
       searchTimezone:
         readOptionalString(raw.searchTimezone) ?? GROUNDED_SEARCH_DEFAULTS.searchTimezone,
       searchProxyUrl: readOptionalString(raw.searchProxyUrl),
+      defaultCoverImage: readOptionalString(raw.defaultCoverImage),
     };
   },
 };
@@ -372,6 +375,7 @@ export default {
                 },
                 {
                   defaultCategoryId: config.defaultCategoryId,
+                  defaultCoverImage: config.defaultCoverImage,
                 },
               );
               return jsonResult({
@@ -428,7 +432,7 @@ export default {
             name: "aiaig_article_publish",
             description:
               "Publish or draft an AIAIG article through the article import API using the configured secret env var.",
-            ownerOnly: true,
+            ownerOnly: false,
             parameters: Type.Object({
               payloadJson: Type.String({
                 description: "Full JSON payload for /api/integrations/articles/import.",

@@ -20,7 +20,8 @@
       "searchDailyLimit": { "type": "integer" },
       "searchCacheTtlMinutes": { "type": "integer" },
       "searchTimezone": { "type": "string" },
-      "searchProxyUrl": { "type": "string" }
+      "searchProxyUrl": { "type": "string" },
+      "defaultCoverImage": { "type": "string" }
     }
   }
 }
